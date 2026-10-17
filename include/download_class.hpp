@@ -125,11 +125,6 @@ public:
     return 0;
   }
   
-
-  // int get_server_socket(){ 
-  //   return server_socket;
-  // }
-
   void pause(){
     pause_signal = 1;
   }

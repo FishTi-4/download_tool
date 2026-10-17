@@ -44,44 +44,52 @@ namespace download{
   }
 
   int run(){
-    int tp_fd = find_server_socket(host, "80");
 
-    send_message(tp_fd, 
-      "HEAD /" + filename + " HTTP/1.1\r\n" +
-      "Host: " + host + "\r\n" +
-      "Connection: close\r\n" +
-      "\r\n"
-    );
+    try{
+      int tp_fd = find_server_socket(host, "80");
 
-    std::string head = read_all(tp_fd);
-    HttpResponse res = parse_http(head);
-    // if(res.status_code != 200){
-    //   std::cerr << res.status_code << std::endl;
-    //   throw std::runtime_error("服务器返回错误");
-    //   return -1;
-    // }
-
-    if(res.headers["Accept-Ranges"] == "bytes" ){}
-    else{
-      std::cout << "服务器不支持断点续传" << std::endl;
-      num_thread = 1;
-    } 
-    close(tp_fd);
-
-    auto tm = std::chrono::milliseconds(500);
-    std::this_thread::sleep_for(tm);
-
-    int content_size = stoi(res.headers["Content-Length"]);
-    int block_size = (content_size + num_thread - 1) / num_thread;
-
-    for(int i = 0; i < num_thread; i++){
-      int start_byte = i * block_size;
-      int end_byte = std::min(start_byte + block_size, content_size) - 1;
-      work_threads.submit_task(
-        [this, start_byte, end_byte](){
-          downloader.run(start_byte, end_byte);
-        }
+      send_message(tp_fd, 
+        "HEAD /" + filename + " HTTP/1.1\r\n" +
+        "Host: " + host + "\r\n" +
+        "Connection: close\r\n" +
+        "\r\n"
       );
+
+      std::string head = read_all(tp_fd);
+      HttpResponse res = parse_http(head);
+      
+      // if(res.status_code != 200){
+      //   std::cerr << res.status_code << std::endl;
+      //   throw std::runtime_error("服务器返回错误");
+      //   return -1;
+      // }
+
+      if(res.headers["Accept-Ranges"] == "bytes" ){}
+      else{
+        std::cout << "服务器不支持断点续传" << std::endl;
+        num_thread = 1;
+      } 
+      close(tp_fd);
+
+      auto tm = std::chrono::milliseconds(500);
+      std::this_thread::sleep_for(tm);
+
+      int content_size = stoi(res.headers["Content-Length"]);
+      int block_size = (content_size + num_thread - 1) / num_thread;
+
+      for(int i = 0; i < num_thread; i++){
+        int start_byte = i * block_size;
+        int end_byte = std::min(start_byte + block_size, content_size) - 1;
+        work_threads.submit_task(
+          [this, start_byte, end_byte](){
+            downloader.run(start_byte, end_byte);
+          }
+        );
+      }
+
+    }
+    catch(std::exception &e){
+      std::cout << e.what() << std::endl;
     }
 
     return 0;
