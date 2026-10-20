@@ -19,8 +19,8 @@ public:
 
   download_class& operator=(const download_class&) = delete;
 
-  download_class(std::string filename, std::string host, std::mutex &mtx, std::condition_variable &cv, int file_fd)
-  : host(host), file_name(filename), mtx(mtx), cv(cv), file_fd(file_fd)
+  download_class(std::string filename, std::string host, std::mutex &mtx, std::condition_variable &cv, int file_fd, std::atomic<int> &download_history)
+  : host(host), file_name(filename), mtx(mtx), cv(cv), file_fd(file_fd), download_history(download_history)
   {
   }
 
@@ -55,7 +55,7 @@ public:
     std::string buf;
     char tmp[4096];
     
-    while(1){
+    while(1){       //流处理头
       int sz = recv(server_fd, tmp, sizeof(tmp), 0);
       if(sz <0){
         throw std::runtime_error("cannot recv");
@@ -83,9 +83,10 @@ public:
         break;
       }
       offset += sz;
+      download_history += sz;
       buf = buf.substr(sz);
       if(buf.empty()) break;
-    }    
+    }               //流处理头
 
     while(1){
 
@@ -102,7 +103,7 @@ public:
       ) break;
 
 
-      int sz = recv(server_fd, tmp, sizeof(tmp), 0);
+      int sz = recv(server_fd, tmp, sizeof(tmp), 0);    //读
       if(sz <=0){
         throw std::runtime_error("cannot recv");
         return -1;
@@ -111,13 +112,14 @@ public:
         break;
       }
 
-      int sz1 = pwrite(file_fd, tmp, sz, offset);
+      int sz1 = pwrite(file_fd, tmp, sz, offset);      //写
       if(sz1 <= 0){
         throw std::runtime_error("cannot write");
         return -1;
       } 
 
       offset += sz;
+      download_history += sz;
     }
 
     ::close(server_fd);
@@ -157,6 +159,8 @@ private:
 
   std::string file_name;
   std::string host;
+
+  std::atomic<int>& download_history;
 
   int close(){
     if(server_socket){

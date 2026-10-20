@@ -41,6 +41,7 @@ namespace download{
 
   ~Worker() {
     downloader.exit();
+    exit_flag = true;
   }
 
   int run(){
@@ -71,10 +72,23 @@ namespace download{
       } 
       close(tp_fd);
 
-      auto tm = std::chrono::milliseconds(500);
+
+      auto tm = std::chrono::milliseconds(100);
       std::this_thread::sleep_for(tm);
 
+      std::thread speed_thread(&Worker::update_speed_loop, this);
+      speed_thread.detach();
+
       int content_size = stoi(res.headers["Content-Length"]);
+      if(content_size == 0){
+        throw std::runtime_error("文件为空");
+      }
+      need_download_size = content_size;
+
+#ifdef DEBUG
+  std::cout << "文件大小: " << content_size << std::endl;
+#endif
+
       int block_size = (content_size + num_thread - 1) / num_thread;
 
       for(int i = 0; i < num_thread; i++){
@@ -108,8 +122,18 @@ namespace download{
   }
 
   int is_done(){
-    return downloader.is_done();
+    return done_flag;
   }
+
+  double get_progress(){
+    return (double)downloaded_size / need_download_size;
+  }
+
+  double get_speed(){
+    return speed;
+  }
+
+
 
   // int change_download_task(std::string url, std::string save_path){
     
@@ -133,8 +157,16 @@ namespace download{
     std::string host;
     std::string filename;
 
-    int num_thread;
+    std::atomic<int> downloaded_size = 0;
+    int last_download_size = 0;
+    int need_download_size = -1;
 
+    bool exit_flag = false;
+    bool done_flag = false;
+
+    std::atomic<double> speed = 0;
+
+    int num_thread;
     std::pair<std::string, std::string> parse_url(std::string url){
       int pos = url.find("://");
       if (pos == std::string::npos) pos = 0;
@@ -148,7 +180,7 @@ namespace download{
 
     Worker(std::pair<std::string, std::string> parse_res, std::string save_path, int num_thread)
       : file_fd(open(save_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644)),
-        downloader(parse_res.second, parse_res.first, mtx, cv, file_fd),
+        downloader(parse_res.second, parse_res.first, mtx, cv, file_fd, downloaded_size),
         work_threads(num_thread), num_thread(num_thread)
     {
       if(file_fd < 0){
@@ -156,6 +188,29 @@ namespace download{
       }
       host = parse_res.first;
       filename = parse_res.second;
+    }
+
+    void update_speed_loop(){ 
+      while(1){
+      
+        int cur_size = downloaded_size - last_download_size;
+        
+        speed = cur_size;
+        last_download_size = downloaded_size;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+#ifdef DEBUG 
+  // if(cur_size!= 0)
+  // std::cout << "下载差值: " << cur_size << std::endl;
+  // if(speed != 0)
+  // std::cout << "下载速度: " << speed << "M/s" << std::endl;
+#endif
+        if(exit_flag || done_flag) break;
+        if( downloaded_size == need_download_size ){
+          std::cout << "下载完成" << std::endl;
+          exit_flag = true;
+        }
+      }
     }
 
 
