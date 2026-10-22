@@ -12,4 +12,5 @@ file(GLOB SRC ./src/*.cpp)
 add_executable(test_find_servet ./test/find_socket_test.cpp)
 add_executable(test_client ./test/client_test.cpp)
 add_executable(test_thread ./test/thread_test.cpp)
+add_executable(test_timer_wheel ./test/timer_wheel_test.cpp)
 
