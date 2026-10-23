@@ -20,12 +20,13 @@
 
 #include "download_class.hpp"
 #include "http_parser.hpp"
-
-
+#include "timer_wheel.hpp"
 
 #define DEBUG
 
 namespace download{
+
+  extern Timer_Wheel timer;
 
   std::string read_all(int);
 
@@ -76,8 +77,10 @@ namespace download{
       auto tm = std::chrono::milliseconds(100);
       std::this_thread::sleep_for(tm);
 
-      std::thread speed_thread(&Worker::update_speed_loop, this);
-      speed_thread.detach();
+      // std::thread speed_thread(&Worker::update_speed_loop, this);
+      // speed_thread.detach();
+
+      timer.add_always_timer(std::chrono::milliseconds(1000), [this](){ update_speed_loop(); } );
 
       int content_size = stoi(res.headers["Content-Length"]);
       if(content_size == 0){
@@ -117,7 +120,7 @@ namespace download{
     downloader.resume();
   }
 
-  void kill_task(){
+  void stop(){
     downloader.exit();
   }
 

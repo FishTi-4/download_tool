@@ -39,7 +39,7 @@ worker.run();
 - `run()` 开始下载
 - `pause()` / `resume()` 暂停 / 恢复
 - `is_done()` 查询是否完成
-- `kill_task()` 终止下载
+- `stop()` 停止下载
 
 ## 测试
 
