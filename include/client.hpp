@@ -1,16 +1,11 @@
 #pragma once
 
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <arpa/inet.h>
+#include "platform.hpp"
 
 #include <mutex>
 #include <condition_variable>
-#include <fcntl.h>
 #include <atomic>
 #include <thread>
-#include <unistd.h>
 
 #include <string>
 #include <iostream>
@@ -71,7 +66,7 @@ namespace download{
         std::cout << "服务器不支持断点续传" << std::endl;
         num_thread = 1;
       } 
-      close(tp_fd);
+      close_socket(tp_fd);
 
 
       auto tm = std::chrono::milliseconds(100);
@@ -182,7 +177,7 @@ namespace download{
     }
 
     Worker(std::pair<std::string, std::string> parse_res, std::string save_path, int num_thread)
-      : file_fd(open(save_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644)),
+      : file_fd(open(save_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0644)),
         downloader(parse_res.second, parse_res.first, mtx, cv, file_fd, downloaded_size),
         work_threads(num_thread), num_thread(num_thread)
     {

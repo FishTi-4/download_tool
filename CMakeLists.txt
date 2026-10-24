@@ -9,6 +9,10 @@ file(GLOB SRC ./src/*.cpp)
 add_library(download_class ${SRC})
 target_include_directories(download_class PRIVATE ./include)
 
+if(WIN32)
+  target_link_libraries(download_class PUBLIC ws2_32)
+endif()
+
 add_executable(test_find_servet ./test/find_socket_test.cpp)
 target_link_libraries(test_find_servet download_class)
 

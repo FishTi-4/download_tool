@@ -1,7 +1,6 @@
 #pragma once
 
-#include <unistd.h>
-#include <sys/socket.h>
+#include "platform.hpp"
 #include <string>
 #include <cstddef>
 #include <atomic>
@@ -26,7 +25,7 @@ public:
 
   ~download_class(){
     if(server_socket){
-      ::close(server_socket);
+      close_socket(server_socket);
     }
     if(file_fd){
       ::close(file_fd);
@@ -73,7 +72,7 @@ public:
     }
 
     while(1){
-      int sz = pwrite(file_fd, buf.data(), buf.size(), offset);
+      int sz = pwrite_at(file_fd, buf.data(), buf.size(), offset);
       if(sz < 0){
         throw std::runtime_error("cannot write");
         return -1;
@@ -112,7 +111,7 @@ public:
         break;
       }
 
-      int sz1 = pwrite(file_fd, tmp, sz, offset);      //写
+      int sz1 = pwrite_at(file_fd, tmp, sz, offset);      //写
       if(sz1 <= 0){
         throw std::runtime_error("cannot write");
         return -1;
@@ -122,7 +121,7 @@ public:
       download_history += sz;
     }
 
-    ::close(server_fd);
+    close_socket(server_fd);
 
     return 0;
   }
@@ -164,7 +163,7 @@ private:
 
   int close(){
     if(server_socket){
-      ::close(server_socket);
+      close_socket(server_socket);
       server_socket = 0;
     }
     return 0;
